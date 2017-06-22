@@ -4,15 +4,15 @@
  * Lexicon Class
  *
  * @author    Mark Croxton <mcroxton@hallmark-design.oc.ku>
- * @copyright Copyright (c) 2016 Mark Croxton
+ * @copyright Copyright (c) 2013 Mark Croxton
  * @license   http://creativecommons.org/licenses/by-sa/3.0/ Attribution-Share Alike 3.0 Unported
  */
 
 class Lexicon_ft extends EE_Fieldtype {
 
     public $info = array(
-        'name'      => 'Lexicon',
-        'version'   => '1.0.0',
+        'name'      => LEXICON_NAME,
+        'version'   => LEXICON_VER,
     );
 
     public $has_array_data = TRUE;
@@ -31,7 +31,7 @@ class Lexicon_ft extends EE_Fieldtype {
     {
         parent::__construct();
 
-        $this->EE->lang->loadfile('lexicon');
+        ee()->lang->loadfile('lexicon');
     }
 
     /*
@@ -51,26 +51,26 @@ class Lexicon_ft extends EE_Fieldtype {
      */
     private function _include_css($field_type = NULL)
     {
-        if ( ! $this->EE->session->cache(__CLASS__, 'css'))
+        if ( ! ee()->session->cache(__CLASS__, 'css'))
         {
-            $this->EE->cp->add_to_head('<style type="text/css">
+            ee()->cp->add_to_head('<style type="text/css">
                 .lexicon label { display:block; }
                 .lexicon input { width:100%; }
                 .lexicon textarea { height:100px; }
-                .lexicon td { vertical-align: top; }
+                .lexicon td { vertical-align: top; background-color: transparent; }
                 .matrix .lexicon input, .grid_cell .lexicon input { width:98.5%; }
-                .lexicon_phrases { padding: 2px 10px 3px 10px ! important; }
+                .lexicon_phrases { padding: 10px 10px 0 ! important; }
             </style>');
 
             if ($field_type == 'element')
             {
-                $this->EE->cp->add_to_head('<style type="text/css">
+                ee()->cp->add_to_head('<style type="text/css">
                     .lexicon input { padding:4px; border-color: #D1D5DE; }
                     .lexicon input:focus { padding: 4px; border-color: #000; border-width: 1px; }
                 </style>');
             }
 
-            $this->EE->session->set_cache(__CLASS__, 'css', TRUE);
+            ee()->session->set_cache(__CLASS__, 'css', TRUE);
         }
     }
 
@@ -87,12 +87,21 @@ class Lexicon_ft extends EE_Fieldtype {
      */
     public function display_settings($data)
     {
-       $rows = $this->_field_settings($data);
+        $field_content = $this->_field_settings($data)[0][1];
 
-        foreach ($rows as $row)
-        {
-            ee()->table->add_row($row[0], $row[1]);
-        }
+        return array(
+            array(
+                array(
+                    'title' => 'Style',
+                    'fields' => array(
+                        'default_site_timezone' => array(
+                            'type' => 'html',
+                            'content' => $field_content
+                        )
+                    )
+                ),
+            ),
+        );
     }
 
     /**
@@ -171,10 +180,10 @@ class Lexicon_ft extends EE_Fieldtype {
      */
     private function _build_multi_radios($data, $name)
     {
-        return form_radio($name, 'text_input', ($data == 'text_input') ) . NL
-            . 'Text input' . NBS.NBS.NBS.NBS.NBS . NL
+        return '<label class="choice mr'.($data == 'text_input'? ' chosen' : '' ).'">' . form_radio($name, 'text_input', ($data == 'text_input') ) . NL
+            . 'Text input</label>' . NBS.NBS.NBS.NBS.NBS . NL . '<label class="choice'.($data == 'textarea'? ' chosen' : '' ).'">'
             . form_radio($name, 'textarea', ($data == 'textarea') ) . NL
-            . 'Textarea';
+            . 'Textarea</label>';
     }
 
 
@@ -184,10 +193,10 @@ class Lexicon_ft extends EE_Fieldtype {
     /**
      * Save Field Settings
      */
-    function save_settings()
+    function save_settings($data)
     {
          // remove empty values
-        return $this->_sanitize_settings( $this->EE->input->post('lexicon_field_settings') );
+        return $this->_sanitize_settings( ee()->input->post('lexicon_field_settings') );
     }
 
     /**
@@ -209,7 +218,7 @@ class Lexicon_ft extends EE_Fieldtype {
      */
     public function save_var_settings()
     {
-        return $this->_sanitize_settings($this->EE->input->post('lexicon_field_settings'));
+        return $this->_sanitize_settings(ee()->input->post('lexicon_field_settings'));
     }
 
     /**
@@ -221,7 +230,12 @@ class Lexicon_ft extends EE_Fieldtype {
      */
     private function _sanitize_settings($settings)
     {
-        return array_filter($settings);
+        if (is_array($settings))
+        {
+            return array_filter($settings);
+        }
+        
+        return array(); // default
     }
 
 
@@ -301,7 +315,7 @@ class Lexicon_ft extends EE_Fieldtype {
         {
             $fields .= '<tr>';
             $fields .= '<td width="20%">';
-            $fields .= form_label($this->EE->lang->line('lexicon_'.$field), $name.'_'.$field);
+            $fields .= form_label(ee()->lang->line('lexicon_'.$field), $name.'_'.$field);
             $fields .= '</td>';
             $fields .= '<td class="lexicon_phrases">';
             $fields .= 
@@ -388,7 +402,16 @@ class Lexicon_ft extends EE_Fieldtype {
         else // Tag pair
         {
             // Replace the variables
-            $output = $this->EE->TMPL->parse_variables($tagdata, array($data));
+            $output = ee()->TMPL->parse_variables($tagdata, array($data));
+        }
+
+        // if no translation exists, output the translation for the primary (first) language
+        if (empty($output))
+        {
+            reset($this->fields);
+            $first_lang = key($this->fields);
+
+            $output = $data[$first_lang];
         }
 
         return $output;
