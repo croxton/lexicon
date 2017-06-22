@@ -18,6 +18,7 @@ protected $fields = array(
 
 ### `language/english/lang.lexicon.php`
 
+```php
 $lang = array(
 
     'lexicon_lang_en'       => 'English (en)',
@@ -27,3 +28,4 @@ $lang = array(
 
     ''=>''
 );
+```
